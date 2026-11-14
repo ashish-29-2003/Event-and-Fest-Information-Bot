@@ -1,0 +1,36 @@
+# === SECRET FILES – NEVER COMMIT THESE ===
+.env
+.streamlit/secrets.toml
+
+# === Python virtual environments ===
+venv/
+.venv/
+env/
+
+# === Python cache files ===
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pycache
+
+# === OS junk ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === IDE / Editor files ===
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# === Test / coverage ===
+.pytest_cache/
+.coverage
+htmlcov/
+
+# === Build artifacts ===
+dist/
+build/
+*.egg-info/
