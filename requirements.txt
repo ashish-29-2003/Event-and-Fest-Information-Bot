@@ -6,9 +6,12 @@ scikit-learn>=1.4.0
 pandas>=2.0.0
 numpy>=1.26.0
 
-# Environment variable loading (for .env file support)
+# Fuzzy matching (better than difflib; falls back to difflib if not installed)
+rapidfuzz>=3.0.0
+
+# Environment variable loading
 python-dotenv>=1.0.0
 
 # Google Gemini API (optional – only needed for LLM fallback)
-# Comment this out if you don't need the AI fallback feature
+# Comment out if you do not need the AI fallback
 google-generativeai>=0.7.0

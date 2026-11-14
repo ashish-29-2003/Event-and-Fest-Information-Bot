@@ -1,0 +1,41 @@
+timestamp,question,intent,confidence,feedback
+2025-02-10 09:05:12,What events are there today?,event_list,0.92,👍
+2025-02-10 09:07:33,When is the hackathon?,event_date,0.88,👍
+2025-02-10 09:12:45,Where is the hackathon venue?,event_venue,0.91,👍
+2025-02-10 09:18:20,What are the prizes for code sprint?,prizes,0.85,👍
+2025-02-10 09:25:10,How do I register for hackathon?,registration_info,0.79,👍
+2025-02-10 09:30:55,I like coding and music suggest events,recommend,0.76,👍
+2025-02-10 09:35:40,Can I attend hackathon and battle of bands?,clash_check,0.82,👍
+2025-02-10 09:42:15,What time does robo wars start?,event_time,0.87,👍
+2025-02-10 10:01:30,Tell me about the fest,fest_info,0.93,👍
+2025-02-10 10:15:22,rules for hackathon,rules,0.84,👍
+2025-02-10 10:30:11,who is the coordinator for dance,contact,0.80,👍
+2025-02-10 11:05:45,show full schedule,schedule,0.95,👍
+2025-02-10 11:20:33,what events are on day 2,event_list,0.88,👍
+2025-02-10 11:35:18,hackathon kab hai,event_date,0.72,👍
+2025-02-10 12:00:05,I enjoy sports suggest something,recommend,0.78,👍
+2025-02-10 12:15:40,do code sprint and quiz clash,clash_check,0.81,👍
+2025-02-10 12:30:22,prize for robo wars,prizes,0.86,👍
+2025-02-10 13:05:10,where is cultural dance,event_venue,0.90,👍
+2025-02-10 13:20:45,registration fee,registration_info,0.75,👍
+2025-02-10 14:00:30,what's happening now,whats_next,0.83,👍
+2025-02-10 14:15:22,AI showcase details,event_date,0.77,👍
+2025-02-10 14:30:10,what about gaming tourney,event_time,0.74,👎
+2025-02-10 15:05:33,treasure hunt rules,rules,0.82,👍
+2025-02-10 15:20:15,cricket match prize,prizes,0.88,👍
+2025-02-10 15:35:40,please tell me everything,event_list,0.31,
+2025-02-10 16:00:22,what should I do at fest,recommend,0.42,👍
+2025-02-10 16:15:10,photography hunt timing,event_time,0.86,👍
+2025-02-10 16:30:45,closing ceremony details,event_date,0.79,👍
+2025-02-10 17:00:30,is there anything fun,recommend,0.68,👍
+2025-02-10 17:15:22,can I win money at hackathon,prizes,0.65,👍
+2025-02-10 17:30:10,namaste,greeting,0.97,👍
+2025-02-10 17:45:33,debate championship venue,event_venue,0.84,👍
+2025-02-10 18:00:15,street play timing,event_time,0.82,👍
+2025-02-10 18:15:40,I want to participate in something,recommend,0.55,👍
+2025-02-10 18:30:22,show me whats happening tomorrow,whats_next,0.71,👍
+2025-02-10 19:00:10,thank you goodbye,goodbye,0.94,👍
+2025-02-10 19:15:33,how to win hackathon,rules,0.28,
+2025-02-10 19:30:45,music events please,event_list,0.73,👍
+2025-02-10 20:00:22,which event has biggest prize,prizes,0.44,👍
+2025-02-10 20:15:10,see you tomorrow bye,goodbye,0.89,👍

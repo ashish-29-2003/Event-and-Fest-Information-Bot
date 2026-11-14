@@ -1,8 +1,28 @@
-# Event and Fest Information Bot 🎉
+# FestBuddy: Smart Event and Fest Information Bot 🎓
 
-A college fest chatbot built with **Python + Streamlit + TF-IDF ML** that answers questions about events, schedules, venues, prizes, rules, and coordinators.
+> **TechFest 2025 Smart Assistant** | Python · Streamlit · TF-IDF · Logistic Regression · Gemini AI
 
-> **Mini Project** – Second-year CS / IT students can extend this into a full major project (online registration, QR tickets, live announcements).
+[![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://python.org)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.32+-red)](https://streamlit.io)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.4+-orange)](https://scikit-learn.org)
+
+---
+
+## 🚀 Features
+
+| Feature | Description |
+|---|---|
+| 💬 **Smart Chatbot** | TF-IDF + Logistic Regression intent classifier with 15 intents |
+| 🌐 **Hinglish Support** | Understands Hindi-English mix ("hackathon kab hai") |
+| 🔍 **Fuzzy Matching** | Handles typos ("hakathn" → Hackathon) |
+| 🧠 **Context Memory** | Follow-up questions work ("and the prize?" after asking about an event) |
+| 🎯 **Event Recommender** | Content-based ML using TF-IDF + cosine similarity |
+| ⚡ **Clash Detector** | Checks if two events overlap in time |
+| ⏰ **Live / Next** | Shows what's happening now and upcoming (with countdown) |
+| 📋 **Personal Planner** | Build your schedule with auto clash detection + CSV/ICS download |
+| 📊 **Analytics Dashboard** | Intent frequency, confidence stats, unanswered questions |
+| 🧪 **ML Insights** | Accuracy, confusion matrix, TF-IDF words, live try-it box |
+| 🤖 **Gemini Fallback** | AI answer when ML confidence is low (works without key too) |
 
 ---
 
@@ -10,117 +30,125 @@ A college fest chatbot built with **Python + Streamlit + TF-IDF ML** that answer
 
 ```
 Event-and-Fest-Information-Bot/
-├── app.py               # Streamlit chat UI
-├── chatbot.py           # ML logic (TF-IDF + cosine similarity)
+├── app.py               # Streamlit 5-tab UI (main file to run)
+├── chatbot.py           # ML brain: TF-IDF, Logistic Regression, context memory
+├── features.py          # Recommender, clash detector, now/next, ICS export
 ├── llm_fallback.py      # Gemini API fallback
-├── intents.json         # 12 intents with example patterns
-├── events.csv           # 10 sample fest events
-├── requirements.txt     # Python dependencies
-├── .gitignore           # Files Git must never track
-├── .env.example         # Template – copy to .env and add your key
+├── analytics.py         # Query logging and analytics
+├── intents.json         # 15 intents with 10-15 patterns each (includes Hinglish)
+├── events.csv           # 15 sample TechFest events with venue lat/lon
+├── logs/
+│   └── queries_log.csv  # Query log with feedback (seeded with sample data)
+├── requirements.txt
+├── .gitignore
+├── .env.example
 └── .streamlit/
-    └── secrets.toml.example   # Streamlit secrets template
+    └── secrets.toml.example
 ```
 
 ---
 
-## ⚡ Quick Start
+## ⚡ How to Clone and Run
 
-### 1. Clone the repo
 ```bash
+# 1. Clone
 git clone https://github.com/ashish-29-2003/Event-and-Fest-Information-Bot.git
 cd Event-and-Fest-Information-Bot
-```
 
-### 2. Create and activate a virtual environment
-```bash
-# Windows
+# 2. Create virtual environment
 python -m venv venv
-venv\Scripts\activate
+venv\Scripts\activate        # Windows
+source venv/bin/activate     # macOS/Linux
 
-# macOS / Linux
-python3 -m venv venv
-source venv/bin/activate
-```
-
-### 3. Install dependencies
-```bash
+# 3. Install dependencies
 pip install -r requirements.txt
-```
 
-### 4. (Optional) Add your Gemini API key
-Copy `.env.example` → `.env` and fill in your key **OR** copy `.streamlit/secrets.toml.example` → `.streamlit/secrets.toml` and fill in your key.
+# 4. (Optional) Add Gemini API key
+copy .env.example .env
+# Edit .env and replace "your_gemini_api_key_here" with your real key
 
-The bot works perfectly without an API key — it just uses the ML model only.
-
-### 5. Run the app
-```bash
+# 5. Run!
 streamlit run app.py
+# Or if streamlit command not found:
+python -m streamlit run app.py
 ```
 
-Open your browser at **http://localhost:8501** 🚀
+Browser opens at **http://localhost:8501** 🚀
 
 ---
 
-## 🧠 How It Works
+## 🧠 ML Architecture
 
 ```
-User message
-    ↓
-Clean / lowercase text
-    ↓
-TF-IDF vectorization
-    ↓
-Cosine similarity → predict intent + confidence score
-    ↓
-If confidence ≥ 0.4  →  Extract event name (fuzzy match) → Build answer from events.csv
-If confidence < 0.4  →  Gemini API fallback (or polite "I didn't understand" if no key)
+User Message
+    │
+    ▼
+translate_hinglish()   ←── Hinglish keyword map
+    │
+    ▼
+clean_text()           ←── lowercase + remove punctuation
+    │
+    ▼
+TF-IDF Vectorizer      ←── text → numerical feature vector (bigrams)
+    │
+    ▼
+Logistic Regression    ←── predicts intent + confidence score (0–1)
+    │
+    ├──(confidence ≥ 0.4)──► find_event() fuzzy match ──► build_reply()
+    │                         from events.csv              from intent/CSV data
+    │
+    └──(confidence < 0.4)──► Gemini API fallback ──► or polite message if no key
 ```
 
 ---
 
 ## 💬 Sample Questions
-| Question | Expected Answer |
+
+| Ask FestBuddy | What it does |
 |---|---|
-| "What events are there?" | Lists all 10 fest events |
-| "When is the hackathon?" | Date and time for Hackathon |
-| "Where is the dance competition?" | Venue for Cultural Dance |
-| "What are the prizes for coding?" | Prize details for Code Sprint |
-| "Who coordinates robotics?" | Coordinator name and contact |
+| `What events are there?` | Lists all 15 events by category |
+| `When is Hackathon?` | Date + time for Hackathon |
+| `hackathon kab hai` | Hinglish → same answer |
+| `I like coding and music` | Recommends top 3 matching events |
+| `Do Hackathon and Battle of Bands clash?` | Clash detection with minutes |
+| `What's happening now?` | Live events based on simulated time |
+| `And the prize?` | Answers for the last discussed event (context memory) |
+
+---
+
+## 📸 Screenshots
+
+> _Coming soon! Add screenshots of your demo here._
+
+| Chat Tab | Events Explorer | ML Insights |
+|---|---|---|
+| _(screenshot)_ | _(screenshot)_ | _(screenshot)_ |
 
 ---
 
 ## 🔑 API Key Setup (Optional)
-See **Section C & D** in the full project documentation, or:
+
 1. Go to [Google AI Studio](https://aistudio.google.com/)
-2. Sign in → **Get API key** → Create key → Copy it
-3. Add it to `.env` as `GEMINI_API_KEY=your_key_here`
-4. **Never push `.env` to GitHub!** (it's already in `.gitignore`)
+2. Sign in → **Get API key** → Create key → Copy
+3. Create `.env` file (copy from `.env.example`) and add your key
+4. **Never push `.env` to GitHub** — it's already in `.gitignore`
 
 ---
 
 ## 🚀 Upgrade Roadmap (Major Project)
-- [ ] Online registration with SQLite database
-- [ ] QR code ticket generation (`qrcode` library)
-- [ ] Admin panel for live announcements
-- [ ] Trained intent model with more data
-- [ ] Email confirmation on registration
+
+- [ ] **Phase 1:** Online registration with SQLite database
+- [ ] **Phase 2:** QR code ticket generation (`qrcode` library)
+- [ ] **Phase 3:** Admin panel for live announcements
+- [ ] **Phase 4:** User login (Google OAuth)
+- [ ] **Phase 5:** Train intent model on real logged questions
 
 ---
 
 ## 🛠 Tech Stack
-- Python 3.10+
-- Streamlit
-- scikit-learn (TF-IDF + Logistic Regression)
-- pandas
-- difflib (fuzzy matching)
-- Google Gemini API (optional fallback)
+
+Python 3.10+ · Streamlit · scikit-learn · pandas · rapidfuzz · Google Gemini API
 
 ---
 
-## 📄 License
-MIT License – Free for educational use.
-
----
-
-*Built as a college mini project. Extend it fearlessly!* 🎓
+*Built as a college mini project — extend it fearlessly into a major project! 🎓*
