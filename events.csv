@@ -1,0 +1,11 @@
+event_name,date,time,venue,category,prize,coordinator,contact
+Code Sprint,2025-02-10,10:00 AM,CS Lab 101,Technical,"1st: ₹5000 | 2nd: ₹3000 | 3rd: ₹1000",Prof. Aarav Mehta,9876543210
+Hackathon,2025-02-11,09:00 AM,Innovation Hub,Technical,"1st: ₹15000 | 2nd: ₹10000 | 3rd: ₹5000",Prof. Sneha Iyer,9876543211
+Robo Wars,2025-02-10,02:00 PM,Engineering Arena,Technical,"1st: ₹8000 | 2nd: ₹5000 | 3rd: ₹2000",Prof. Kiran Rao,9876543212
+Cultural Dance,2025-02-12,03:00 PM,Main Auditorium,Cultural,"1st: ₹4000 | 2nd: ₹2500 | 3rd: ₹1000",Ms. Priya Sharma,9876543213
+Battle of Bands,2025-02-12,05:00 PM,Open Air Stage,Cultural,"1st: ₹6000 | 2nd: ₹3500 | 3rd: ₹1500",Mr. Rahul Verma,9876543214
+Street Play,2025-02-11,11:00 AM,College Ground,Cultural,"1st: ₹3000 | 2nd: ₹2000 | 3rd: ₹500",Ms. Ananya Nair,9876543215
+Quiz Blitz,2025-02-10,12:00 PM,Seminar Hall,Quiz,"1st: ₹2000 | 2nd: ₹1000 | 3rd: ₹500",Prof. Deepak Joshi,9876543216
+Photography Hunt,2025-02-11,10:00 AM,Campus-wide,Creative,"1st: ₹3000 | 2nd: ₹1500 | 3rd: ₹500",Ms. Ritu Patel,9876543217
+Debate Championship,2025-02-12,09:00 AM,Seminar Hall,Literary,"1st: ₹2500 | 2nd: ₹1500 | 3rd: ₹500",Prof. Sunita Kulkarni,9876543218
+Gaming Tourney,2025-02-11,02:00 PM,Computer Lab 3,Gaming,"1st: ₹4000 | 2nd: ₹2000 | 3rd: ₹1000",Mr. Arjun Singh,9876543219
