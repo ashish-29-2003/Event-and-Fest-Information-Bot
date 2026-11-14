@@ -2,38 +2,40 @@
 chatbot.py – ML Brain of FestBuddy
 ====================================
 Pipeline:
-  User message → translate Hinglish → clean text → TF-IDF → Logistic Regression
-  → extract entities (event name, day, category) via fuzzy match
+  User message → clean text & translate Hinglish → TF-IDF → Logistic Regression
+  → extract entities (event name, day, category) via keyword & fuzzy match
   → build context-aware reply from events.csv
 
 Context memory: caller passes/updates a dict {"last_event": ..., "last_intent": ...}
-so follow-up questions like "and the prize?" answer for the last discussed event.
+so follow-up questions like "and the prize?" or "where is it?" answer for the last discussed event.
 
-Author: FestBuddy Dev Team  |  Version: 2.0
+Author: FestBuddy Dev Team  |  Version: 2.1
 """
 
 import json
 import re
 import random
+import warnings
 
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 
+# Suppress sklearn/scipy deprecation and optimization notices
+warnings.filterwarnings("ignore")
+
 # ── Fuzzy matching: prefer rapidfuzz, fall back to difflib ────────────────────
 try:
-    from rapidfuzz import process as rfuzz
-    def _fuzzy_match(query, choices, cutoff=50):
-        """Return best match using rapidfuzz (score 0-100)."""
-        result = rfuzz.extractOne(query, choices, score_cutoff=cutoff)
-        return result[0] if result else None
+    from rapidfuzz import fuzz
+    def _fuzzy_token_score(s1: str, s2: str) -> float:
+        """Return ratio 0-100 between two strings."""
+        return float(fuzz.ratio(s1, s2))
 except ImportError:
     import difflib
-    def _fuzzy_match(query, choices, cutoff=50):
-        """Fallback: difflib (cutoff mapped 0-100 → 0-1)."""
-        matches = difflib.get_close_matches(query, choices, n=1, cutoff=cutoff / 100)
-        return matches[0] if matches else None
+    def _fuzzy_token_score(s1: str, s2: str) -> float:
+        """Fallback: difflib (ratio 0-1 mapped to 0-100)."""
+        return difflib.SequenceMatcher(None, s1, s2).ratio() * 100
 
 # ── Hinglish keyword map ──────────────────────────────────────────────────────
 HINGLISH_MAP = {
@@ -42,6 +44,7 @@ HINGLISH_MAP = {
     "batao": "tell me", "dikaho": "show", "hai": "is", "hain": "are",
     "niyam": "rules", "samay": "time", "jagah": "venue", "sab": "all",
     "accha": "good", "theek": "okay", "aur": "and", "bhi": "also",
+    "karen": "do", "karein": "do", "hoga": "will", "paise": "money",
 }
 
 # ── Configuration ─────────────────────────────────────────────────────────────
@@ -53,18 +56,26 @@ DAYS = {"day 1": "Day 1", "day 2": "Day 2", "day 3": "Day 3",
         "feb 10": "Day 1", "feb 11": "Day 2", "feb 12": "Day 3",
         "day1": "Day 1", "day2": "Day 2", "day3": "Day 3"}
 
-
-def translate_hinglish(text: str) -> str:
-    """Replace known Hinglish words with English equivalents before processing."""
-    words = text.lower().split()
-    return " ".join(HINGLISH_MAP.get(w, w) for w in words)
+# Common stop words to exclude when doing event keyword matching
+STOP_WORDS = {
+    "of", "and", "the", "in", "at", "is", "for", "a", "an", "what",
+    "when", "where", "who", "which", "how", "about", "tell", "show",
+    "rules", "prize", "prizes", "venue", "time", "date", "contact",
+    "coordinator", "schedule", "details", "me", "can", "to", "there",
+    "are", "will", "be", "with", "from", "on", "it", "its"
+}
 
 
 def clean_text(text: str) -> str:
-    """Lowercase, translate Hinglish, strip punctuation for TF-IDF."""
-    text = translate_hinglish(text)
+    """
+    Lowercase, remove punctuation, translate Hinglish keywords to English,
+    and normalize whitespace for clean TF-IDF processing.
+    """
+    text = text.lower().strip()
     text = re.sub(r"[^a-z0-9\s]", " ", text)
-    return re.sub(r"\s+", " ", text).strip()
+    words = text.split()
+    translated = [HINGLISH_MAP.get(w, w) for w in words]
+    return " ".join(translated).strip()
 
 
 def load_intents(path: str = "intents.json") -> list:
@@ -74,8 +85,8 @@ def load_intents(path: str = "intents.json") -> list:
 
 
 def load_events(path: str = "events.csv") -> pd.DataFrame:
-    """Load events.csv; strip column whitespace for safety."""
-    df = pd.read_csv(path)
+    """Load events.csv with utf-8 encoding; strip column whitespace for safety."""
+    df = pd.read_csv(path, encoding="utf-8")
     df.columns = [c.strip() for c in df.columns]
     return df
 
@@ -92,13 +103,12 @@ def build_training_data(intents: list):
 
 def train_model(X: list, y: list) -> Pipeline:
     """
-    TF-IDF (bigrams) + Logistic Regression pipeline.
+    TF-IDF (unigrams + bigrams) + Logistic Regression pipeline.
     Returns the fitted sklearn Pipeline.
     """
     model = Pipeline([
         ("tfidf", TfidfVectorizer(ngram_range=(1, 2), min_df=1, sublinear_tf=True)),
-        ("clf",   LogisticRegression(max_iter=500, C=5.0, solver="lbfgs",
-                                     multi_class="multinomial")),
+        ("clf",   LogisticRegression(max_iter=500, C=5.0, solver="lbfgs")),
     ])
     model.fit(X, y)
     return model
@@ -106,24 +116,100 @@ def train_model(X: list, y: list) -> Pipeline:
 
 def find_event(message: str, events_df: pd.DataFrame):
     """
-    Fuzzy-match an event name from the user message.
-    Returns a DataFrame row (Series) or None.
-    Tries: (1) fuzzy full-name match, (2) word-level substring match.
+    Smart event matching:
+      1. Direct full event name match in message (e.g. 'hackathon' in 'when is hackathon')
+      2. Event keyword match in message words (e.g. 'dance' -> 'Cultural Dance')
+      3. Fuzzy token match for typos (e.g. 'hakathn' -> 'Hackathon', 'cod spint' -> 'Code Sprint')
+    Returns matching DataFrame row (Series) or None if no event mentioned.
     """
     msg_lower = message.lower()
     names = events_df["event_name"].tolist()
-    names_lower = [n.lower() for n in names]
 
-    match = _fuzzy_match(msg_lower, names_lower, cutoff=45)
-    if match:
-        idx = names_lower.index(match)
-        return events_df.iloc[idx]
+    # 1. Exact full name match in message
+    for name in names:
+        if name.lower() in msg_lower:
+            return events_df[events_df["event_name"] == name].iloc[0]
 
-    # Word-level fallback
-    for name_l, name_orig in zip(names_lower, names):
-        if any(word in msg_lower for word in name_l.split() if len(word) > 3):
-            return events_df[events_df["event_name"] == name_orig].iloc[0]
+    # 2. Significant keyword match from event name
+    msg_words = re.findall(r"[a-z0-9]+", msg_lower)
+    for name in names:
+        ev_words = [w for w in name.lower().split() if w not in STOP_WORDS]
+        for ew in ev_words:
+            if ew in msg_words and len(ew) > 2:
+                return events_df[events_df["event_name"] == name].iloc[0]
+
+    # 3. Fuzzy match on individual words (handles typos without false positives)
+    best_event = None
+    best_score = 0
+    for name in names:
+        ev_words = [w for w in name.lower().split() if w not in STOP_WORDS]
+        for mw in msg_words:
+            if mw in STOP_WORDS or len(mw) < 3:
+                continue
+            for ew in ev_words:
+                score = _fuzzy_token_score(mw, ew)
+                if score >= 75 and score > best_score:
+                    best_score = score
+                    best_event = name
+
+    if best_event:
+        return events_df[events_df["event_name"] == best_event].iloc[0]
+
     return None
+
+
+def extract_two_events(message: str, events_df: pd.DataFrame) -> list[str]:
+    """
+    Extract two event names from a message for clash checking.
+    Handles partial names, keywords, and typos (e.g. 'Hackathon and Dance').
+    Returns a list of up to 2 distinct event names.
+    """
+    msg_lower = message.lower()
+    names = events_df["event_name"].tolist()
+
+    # 1. Direct match for full event names
+    found = [n for n in names if n.lower() in msg_lower]
+    if len(found) >= 2:
+        return found[:2]
+
+    # 2. Score all events by keyword & fuzzy matches
+    msg_words = re.findall(r"[a-z0-9]+", msg_lower)
+    clash_ignore = STOP_WORDS | {"clash", "check", "overlap", "attend", "both", "between", "conflict", "vs"}
+    scores = []
+
+    for name in names:
+        ename_l = name.lower()
+        if ename_l in msg_lower:
+            scores.append((name, 100))
+            continue
+        ev_words = [w for w in ename_l.split() if w not in STOP_WORDS]
+        max_s = 0
+        for ew in ev_words:
+            if ew in msg_words and len(ew) > 2:
+                max_s = max(max_s, 95)
+            for mw in msg_words:
+                if mw in clash_ignore:
+                    continue
+                max_s = max(max_s, _fuzzy_token_score(mw, ew))
+        if max_s >= 75:
+            scores.append((name, max_s))
+
+    scores.sort(key=lambda x: x[1], reverse=True)
+    distinct = []
+    for item in scores:
+        if item[0] not in distinct:
+            distinct.append(item[0])
+        if len(distinct) == 2:
+            break
+
+    if len(distinct) == 2:
+        return distinct
+    elif len(found) == 1:
+        other = [s[0] for s in scores if s[0] != found[0]]
+        if other:
+            return [found[0], other[0]]
+
+    return found
 
 
 def extract_day(message: str) -> str | None:
@@ -147,9 +233,9 @@ def extract_category(message: str) -> str | None:
 def build_reply(intent_tag: str, event_row, intents: list,
                 day: str = None, category: str = None) -> str:
     """
-    Build the final answer string.
-    - Event-specific intents: format info from the CSV row.
-    - General intents: pick a random response from intents.json.
+    Build the final answer string:
+      - Event-specific intents: format info from the CSV row.
+      - General intents: pick a random response from intents.json.
     """
     if event_row is not None:
         name = event_row["event_name"]
@@ -178,11 +264,12 @@ def build_reply(intent_tag: str, event_row, intents: list,
         if intent_tag == "rules":
             return f"📋 **{name}** Rules:\n{event_row['rules']}"
 
-    # Pick random response from intents.json for the matched tag
+    # General intent → pick random response from intents.json
     for intent in intents:
         if intent["tag"] == intent_tag:
             return random.choice(intent["responses"])
-    return "I'm not sure I understood that. Could you rephrase?"
+
+    return "I'm not sure I understood that. Could you rephrase your question?"
 
 
 # ── Quick-reply chip suggestions per intent ───────────────────────────────────
@@ -217,7 +304,7 @@ class FestBot:
         self.events_df = load_events()
         X, y           = build_training_data(self.intents)
         self.model     = train_model(X, y)
-        self._X_train  = X  # keep for ML Insights tab
+        self._X_train  = X  # for ML Insights tab
         self._y_train  = y
 
     def get_response(self, user_message: str, context: dict) -> dict:
@@ -226,8 +313,8 @@ class FestBot:
 
         Args:
             user_message: raw string from the user
-            context: dict with keys "last_event" and "last_intent"
-                     (updated in-place if a new event is found)
+            context: dict with keys 'last_event' and 'last_intent'
+                     (updated in-place if an event is discussed)
 
         Returns dict with:
             reply      – answer string
@@ -244,14 +331,19 @@ class FestBot:
 
         # ── Low confidence → signal for LLM fallback ─────────────────────────
         if conf < CONFIDENCE_THRESH:
-            return {"reply": None, "intent": intent, "confidence": conf,
-                    "low_conf": True, "chips": CHIPS.get(intent, []),
-                    "entities": {}}
+            return {
+                "reply": None,
+                "intent": intent,
+                "confidence": conf,
+                "low_conf": True,
+                "chips": CHIPS.get(intent, ["Show all events", "Full schedule", "Recommend events"]),
+                "entities": {},
+            }
 
         # ── Entity extraction ─────────────────────────────────────────────────
         event_row = find_event(user_message, self.events_df)
 
-        # Context memory: if no event found in this message, use last discussed
+        # Context memory: if no event found in this message, use last discussed event
         if event_row is None and intent in EVENT_SPECIFIC_INTENTS:
             last = context.get("last_event")
             if last:
@@ -259,7 +351,7 @@ class FestBot:
                 if not rows.empty:
                     event_row = rows.iloc[0]
 
-        # Update context with the newly mentioned event
+        # Update context memory
         if event_row is not None:
             context["last_event"] = event_row["event_name"]
         context["last_intent"] = intent
@@ -273,6 +365,11 @@ class FestBot:
         }
 
         reply = build_reply(intent, event_row, self.intents, day, category)
-        return {"reply": reply, "intent": intent, "confidence": conf,
-                "low_conf": False, "chips": CHIPS.get(intent, []),
-                "entities": entities}
+        return {
+            "reply": reply,
+            "intent": intent,
+            "confidence": conf,
+            "low_conf": False,
+            "chips": CHIPS.get(intent, []),
+            "entities": entities,
+        }

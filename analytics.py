@@ -7,7 +7,7 @@ Provides aggregated stats for the Analytics tab.
 Log file: logs/queries_log.csv
 Columns : timestamp, question, intent, confidence, feedback
 
-Author: FestBuddy Dev Team  |  Version: 2.0
+Author: FestBuddy Dev Team  |  Version: 2.1
 """
 
 import os
@@ -23,7 +23,7 @@ def _ensure_log() -> None:
     """Create logs/ directory and an empty CSV with headers if not present."""
     os.makedirs("logs", exist_ok=True)
     if not os.path.exists(LOG_FILE):
-        pd.DataFrame(columns=LOG_COLUMNS).to_csv(LOG_FILE, index=False)
+        pd.DataFrame(columns=LOG_COLUMNS).to_csv(LOG_FILE, index=False, encoding="utf-8")
 
 
 def log_query(question: str, intent: str, confidence: float) -> int:
@@ -37,28 +37,28 @@ def log_query(question: str, intent: str, confidence: float) -> int:
         "timestamp":  datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "question":   question,
         "intent":     intent,
-        "confidence": round(confidence, 4),
+        "confidence": round(float(confidence), 4),
         "feedback":   "",
     }
     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-    df.to_csv(LOG_FILE, index=False)
+    df.to_csv(LOG_FILE, index=False, encoding="utf-8")
     return len(df) - 1  # row index of the new entry
 
 
 def update_feedback(row_idx: int, feedback: str) -> None:
-    """Write 👍 or 👎 into the feedback column of a specific row."""
+    """Write feedback (e.g. 👍 or 👎) into the feedback column of a specific row."""
     _ensure_log()
     df = load_log()
     if 0 <= row_idx < len(df):
         df.at[row_idx, "feedback"] = feedback
-        df.to_csv(LOG_FILE, index=False)
+        df.to_csv(LOG_FILE, index=False, encoding="utf-8")
 
 
 def load_log() -> pd.DataFrame:
-    """Load and return the full log DataFrame. Returns empty DF on error."""
+    """Load and return the full log DataFrame with UTF-8 encoding. Returns empty DF on error."""
     _ensure_log()
     try:
-        df = pd.read_csv(LOG_FILE)
+        df = pd.read_csv(LOG_FILE, encoding="utf-8")
         # Ensure all expected columns exist
         for col in LOG_COLUMNS:
             if col not in df.columns:
@@ -77,7 +77,7 @@ def get_analytics(df: pd.DataFrame) -> dict:
         total          – total questions logged
         avg_conf       – average confidence score
         top_intents    – Series (intent → count), top 10
-        unanswered     – DataFrame of low-confidence or no-feedback rows
+        unanswered     – DataFrame of low-confidence or negative-feedback rows
         thumbs_up      – count of 👍
         thumbs_down    – count of 👎
         feedback_pct   – % positive out of rated responses
@@ -93,7 +93,7 @@ def get_analytics(df: pd.DataFrame) -> dict:
     top_intents = df["intent"].value_counts().head(10)
     avg_conf    = round(float(df["confidence"].mean()), 3)
 
-    # Unanswered = confidence below threshold or thumbs-down
+    # Unanswered = confidence below threshold or user gave thumbs down
     unanswered = df[(df["confidence"] < 0.40) | (df["feedback"] == "👎")]
 
     thumbs_up   = int((df["feedback"] == "👍").sum())

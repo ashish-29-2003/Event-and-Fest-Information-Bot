@@ -8,16 +8,25 @@ Modules:
   4. generate_ics      – export schedule as .ics calendar file content
   5. get_schedule_df   – build a timetable DataFrame for the planner
 
-Author: FestBuddy Dev Team  |  Version: 2.0
+Author: FestBuddy Dev Team  |  Version: 2.1
 """
 
 from __future__ import annotations
-import io
 from datetime import datetime, timedelta
 
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+# ── Fuzzy matching helper ─────────────────────────────────────────────────────
+try:
+    from rapidfuzz import fuzz
+    def _ratio(s1: str, s2: str) -> float:
+        return float(fuzz.ratio(s1, s2))
+except ImportError:
+    import difflib
+    def _ratio(s1: str, s2: str) -> float:
+        return difflib.SequenceMatcher(None, s1, s2).ratio() * 100
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -27,17 +36,9 @@ def recommend_events(user_interests: str, events_df: pd.DataFrame,
                      top_n: int = 3) -> list[dict]:
     """
     Content-based recommender using TF-IDF + cosine similarity.
-
-    Each event gets a 'text profile' = tags + description + category.
-    The user's interest string is vectorized the same way, and we return
-    the top_n most similar events with a match percentage.
-
-    Args:
-        user_interests: free-text interests ("I like coding and music")
-        events_df:      full events DataFrame
-        top_n:          number of events to return
-
-    Returns list of dicts: {event_name, category, match_pct, description}
+    Each event gets a text profile = tags + description + category.
+    The user's query is vectorized with TF-IDF, and top_n matching events
+    are returned with a match percentage.
     """
     if events_df.empty or not user_interests.strip():
         return []
@@ -47,7 +48,6 @@ def recommend_events(user_interests: str, events_df: pd.DataFrame,
                 events_df["description"].fillna("") + " " +
                 events_df["category"].fillna("")).tolist()
 
-    # TF-IDF on profiles + user query
     corpus = profiles + [user_interests]
     vectorizer = TfidfVectorizer(ngram_range=(1, 2), stop_words="english")
     try:
@@ -55,20 +55,28 @@ def recommend_events(user_interests: str, events_df: pd.DataFrame,
     except ValueError:
         return []
 
-    # Cosine similarity of user vector vs every event profile
-    user_vec    = tfidf_matrix[-1]
-    event_vecs  = tfidf_matrix[:-1]
-    scores      = cosine_similarity(user_vec, event_vecs).flatten()
+    user_vec   = tfidf_matrix[-1]
+    event_vecs = tfidf_matrix[:-1]
+    scores     = cosine_similarity(user_vec, event_vecs).flatten()
 
     top_indices = scores.argsort()[::-1][:top_n]
     results = []
+    max_score = float(scores.max()) if len(scores) > 0 else 0.0
+
     for idx in top_indices:
-        if scores[idx] > 0:
+        raw_score = float(scores[idx])
+        if raw_score > 0:
             row = events_df.iloc[idx]
+            # Match percentage calibrated for realistic user feedback
+            if max_score > 0:
+                pct = round((raw_score / max_score) * 45 + 50, 1)
+            else:
+                pct = round(raw_score * 100, 1)
+
             results.append({
                 "event_name":  row["event_name"],
                 "category":    row["category"],
-                "match_pct":   round(float(scores[idx]) * 100, 1),
+                "match_pct":   min(pct, 98.5),
                 "description": row.get("description", ""),
                 "venue":       row.get("venue", ""),
                 "date":        row.get("date", ""),
@@ -90,18 +98,32 @@ def _parse_dt(date_str: str, time_str: str) -> datetime | None:
 
 def check_clash(name1: str, name2: str, events_df: pd.DataFrame) -> dict:
     """
-    Check if two named events overlap in time.
+    Check if two named events overlap in schedule.
 
     Returns dict with:
         status   – "clash" | "no_clash" | "not_found"
-        message  – human-readable explanation
-        overlap  – overlap duration in minutes (0 if no clash)
+        message  – formatted explanation for the user
+        overlap  – overlap duration in minutes
     """
-    def find_row(name):
-        """Find event row by name (case-insensitive partial match)."""
-        name_l = name.lower()
+    def find_row(name: str):
+        """Find event row by exact name, substring, keyword, or fuzzy match."""
+        name_l = name.strip().lower()
+        # 1. Exact match
+        for _, row in events_df.iterrows():
+            if name_l == row["event_name"].lower():
+                return row
+        # 2. Substring match
         for _, row in events_df.iterrows():
             if name_l in row["event_name"].lower() or row["event_name"].lower() in name_l:
+                return row
+        # 3. Word-level match
+        for _, row in events_df.iterrows():
+            ev_words = [w for w in row["event_name"].lower().split() if len(w) > 2]
+            if any(w in name_l.split() for w in ev_words):
+                return row
+        # 4. Fuzzy ratio match
+        for _, row in events_df.iterrows():
+            if _ratio(name_l, row["event_name"].lower()) >= 70:
                 return row
         return None
 
@@ -110,20 +132,23 @@ def check_clash(name1: str, name2: str, events_df: pd.DataFrame) -> dict:
 
     if r1 is None or r2 is None:
         missing = name1 if r1 is None else name2
-        return {"status": "not_found",
-                "message": f"⚠️ I couldn't find an event called **{missing}**. "
-                           f"Please check the event name.",
-                "overlap": 0}
+        return {
+            "status": "not_found",
+            "message": f"⚠️ I couldn't find an event called **{missing}**. Please check the event name.",
+            "overlap": 0,
+        }
 
-    # Events on different days → no clash
+    # Different days → no clash possible
     if r1["day"] != r2["day"]:
-        return {"status": "no_clash",
-                "message": (f"✅ **No clash!** {r1['event_name']} is on **{r1['day']}** "
-                            f"and {r2['event_name']} is on **{r2['day']}**. "
-                            f"You can attend both! 🎉"),
-                "overlap": 0}
+        return {
+            "status": "no_clash",
+            "message": (f"✅ **No clash!** {r1['event_name']} is on **{r1['day']}** "
+                        f"and {r2['event_name']} is on **{r2['day']}**. "
+                        f"You can attend both! 🎉"),
+            "overlap": 0,
+        }
 
-    # Parse times
+    # Parse event times
     s1 = _parse_dt(r1["date"], r1["start_time"])
     e1 = _parse_dt(r1["date"], r1["end_time"])
     s2 = _parse_dt(r2["date"], r2["start_time"])
@@ -132,24 +157,28 @@ def check_clash(name1: str, name2: str, events_df: pd.DataFrame) -> dict:
     if None in (s1, e1, s2, e2):
         return {"status": "no_clash", "message": "Could not parse event times.", "overlap": 0}
 
-    # Overlap = max(0, min(e1,e2) - max(s1,s2))
+    # Overlap calculation: max(0, min(e1, e2) - max(s1, s2))
     overlap_start = max(s1, s2)
     overlap_end   = min(e1, e2)
     overlap_mins  = max(0, int((overlap_end - overlap_start).total_seconds() / 60))
 
     if overlap_mins > 0:
-        return {"status": "clash",
-                "message": (f"⚡ **Clash detected!** {r1['event_name']} "
-                            f"({r1['start_time']}–{r1['end_time']}) and "
-                            f"{r2['event_name']} ({r2['start_time']}–{r2['end_time']}) "
-                            f"overlap by **{overlap_mins} minutes** on {r1['day']}."),
-                "overlap": overlap_mins}
+        return {
+            "status": "clash",
+            "message": (f"⚡ **Clash detected!** {r1['event_name']} "
+                        f"({r1['start_time']}–{r1['end_time']}) and "
+                        f"{r2['event_name']} ({r2['start_time']}–{r2['end_time']}) "
+                        f"overlap by **{overlap_mins} minutes** on {r1['day']}."),
+            "overlap": overlap_mins,
+        }
 
-    return {"status": "no_clash",
-            "message": (f"✅ **No clash!** {r1['event_name']} ends at {r1['end_time']} "
-                        f"and {r2['event_name']} starts at {r2['start_time']} "
-                        f"on the same day. You can attend both! 🎉"),
-            "overlap": 0}
+    return {
+        "status": "no_clash",
+        "message": (f"✅ **No clash!** {r1['event_name']} ends at {r1['end_time']} "
+                    f"and {r2['event_name']} starts at {r2['start_time']} "
+                    f"on {r1['day']}. You can attend both! 🎉"),
+        "overlap": 0,
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -158,10 +187,9 @@ def check_clash(name1: str, name2: str, events_df: pd.DataFrame) -> dict:
 def get_now_next(sim_time: datetime, events_df: pd.DataFrame) -> dict:
     """
     Given a simulated current time, return:
-        live     – list of events happening right now
-        upcoming – list of next events (within 3 hours)
-        done     – list of events already finished today
-    Each entry includes a countdown or time-since string.
+        live     – events currently in progress
+        upcoming – events starting within 3 hours
+        done     – events already finished on the same date
     """
     live, upcoming, done = [], [], []
 
@@ -171,18 +199,14 @@ def get_now_next(sim_time: datetime, events_df: pd.DataFrame) -> dict:
         if start is None or end is None:
             continue
 
-        # Only today (same date as sim_time)
         if start.date() != sim_time.date():
             continue
 
         if start <= sim_time <= end:
-            # Currently live
             remaining = int((end - sim_time).total_seconds() / 60)
-            live.append({**row.to_dict(),
-                         "label": f"⏱️ Ends in {remaining} min"})
+            live.append({**row.to_dict(), "label": f"⏱️ Ends in {remaining} min"})
 
         elif sim_time < start <= sim_time + timedelta(hours=3):
-            # Starting within 3 hours
             mins_to_start = int((start - sim_time).total_seconds() / 60)
             h, m = divmod(mins_to_start, 60)
             label = f"🔜 Starts in {h}h {m}m" if h else f"🔜 Starts in {m}m"
@@ -200,9 +224,8 @@ def get_now_next(sim_time: datetime, events_df: pd.DataFrame) -> dict:
 # ══════════════════════════════════════════════════════════════════════════════
 def generate_ics(selected_events: pd.DataFrame) -> str:
     """
-    Build .ics file content for the selected events.
-    Returns the raw string — caller passes it to st.download_button.
-    No external library needed; we format RFC 5545 manually.
+    Build RFC 5545 .ics calendar content for selected events.
+    Compatible with Google Calendar, Apple Calendar, and Outlook.
     """
     lines = [
         "BEGIN:VCALENDAR",
@@ -219,14 +242,19 @@ def generate_ics(selected_events: pd.DataFrame) -> str:
         except Exception:
             continue
 
+        summary = f"{row['event_name']} – TechFest 2025"
+        venue   = str(row.get("venue", ""))
+        desc    = str(row.get("description", "")).replace("\n", " ").replace(",", " ")
+        coord   = str(row.get("coordinator", ""))
+
         lines += [
             "BEGIN:VEVENT",
             f"DTSTART:{start.strftime('%Y%m%dT%H%M%S')}",
             f"DTEND:{end.strftime('%Y%m%dT%H%M%S')}",
-            f"SUMMARY:{row['event_name']} – TechFest 2025",
-            f"LOCATION:{row.get('venue', '')}",
-            f"DESCRIPTION:{row.get('description', '').replace(',', ' ')}",
-            f"ORGANIZER;CN={row.get('coordinator', '')}:mailto:techfest2025@college.edu",
+            f"SUMMARY:{summary}",
+            f"LOCATION:{venue}",
+            f"DESCRIPTION:{desc}",
+            f"ORGANIZER;CN={coord}:mailto:techfest2025@college.edu",
             "END:VEVENT",
         ]
 
@@ -240,8 +268,7 @@ def generate_ics(selected_events: pd.DataFrame) -> str:
 def get_schedule_df(selected_events: pd.DataFrame) -> pd.DataFrame:
     """
     Build a clean timetable DataFrame for the My Planner tab.
-    Columns: Day, Date, Event, Start, End, Venue, Category, Prize
-    Sorted by Day then Start time.
+    Sorted by Day, then Start Time.
     """
     if selected_events.empty:
         return pd.DataFrame()

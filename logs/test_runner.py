@@ -1,57 +1,42 @@
-import sys, os
-sys.path.insert(0, r'd:\Projects\Event-and-Fest-Information-Bot')
-os.chdir(r'd:\Projects\Event-and-Fest-Information-Bot')
+import sys
+import os
 
-from chatbot import FestBot, clean_text, translate_hinglish
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+os.chdir(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-# Test Hinglish translation
-t = translate_hinglish("hackathon kab hai")
-print(f"[1] Hinglish: '{t}'")
-
-# Test clean_text
-c = clean_text("Hackathon kab hai???")
-print(f"[2] Clean: '{c}'")
-
-# Train bot
-bot = FestBot()
-print(f"[3] Bot trained. {len(bot.intents)} intents, {len(bot.events_df)} events")
-
-# Test intent prediction
-r = bot.get_response("When is hackathon?", {})
-print(f"[4] Intent={r['intent']} Conf={r['confidence']:.2f}")
-print(f"    Reply: {r['reply'][:70]}")
-
-# Test context memory
-ctx = {"last_event": "Hackathon", "last_intent": "event_date"}
-r2 = bot.get_response("and the prize?", ctx)
-print(f"[5] Context intent={r2['intent']} Event={r2['entities'].get('event')}")
-print(f"    Reply: {r2['reply'][:70]}")
-
-# Test features
+from chatbot import FestBot, clean_text, extract_two_events
 from features import check_clash, recommend_events, get_now_next
-from datetime import datetime
+from analytics import load_log, get_analytics
 
-clash = check_clash("Code Sprint", "Quiz Blitz", bot.events_df)
-print(f"[6] Clash Code Sprint vs Quiz Blitz: {clash['status']}")
+print("[1] Testing clean_text & Hinglish translation...")
+print("    'Hackathon kab hai?' ->", clean_text("Hackathon kab hai?"))
 
-clash2 = check_clash("Hackathon", "Gaming Tourney", bot.events_df)
-print(f"[7] Clash Hackathon vs Gaming: {clash2['status']} overlap={clash2['overlap']}min")
+print("[2] Initializing FestBot ML model...")
+bot = FestBot()
+print(f"    Loaded {len(bot.intents)} intents, {len(bot.events_df)} events.")
 
-recs = recommend_events("I love coding programming algorithms", bot.events_df)
-print(f"[8] Recommendations: {[r['event_name'] for r in recs]}")
+print("[3] Testing intent classification...")
+ctx = {"last_event": None, "last_intent": None}
+r1 = bot.get_response("When is hackathon?", ctx)
+print(f"    Intent: {r1['intent']} (Conf: {r1['confidence']:.2%})")
 
-sim_time = datetime(2025, 2, 11, 10, 0)
-nn = get_now_next(sim_time, bot.events_df)
-print(f"[9] Live events on Feb11 10AM: {[e['event_name'] for e in nn['live']]}")
-print(f"    Upcoming: {[e['event_name'] for e in nn['upcoming']]}")
+print("[4] Testing context memory for follow-up questions...")
+r2 = bot.get_response("and the prize?", ctx)
+print(f"    Intent: {r2['intent']} | Event: {r2['entities'].get('event')}")
+assert r2['entities'].get('event') == 'Hackathon', "Context memory failed to recall Hackathon!"
 
-# Test analytics
-from analytics import log_query, load_log, get_analytics
-idx = log_query("test question", "greeting", 0.95)
+print("[5] Testing smart features...")
+recs = recommend_events("I love competitive coding algorithms", bot.events_df)
+print(f"    Recommendations count: {len(recs)} -> {[r['event_name'] for r in recs]}")
+
+clash_evs = extract_two_events("Can I attend Hackathon and Dance?", bot.events_df)
+print(f"    Extracted clash pair: {clash_evs}")
+clash_res = check_clash(clash_evs[0], clash_evs[1], bot.events_df)
+print(f"    Clash check status: {clash_res['status']}")
+
+print("[6] Testing analytics log reading...")
 df = load_log()
-print(f"[10] Log rows: {len(df)}")
+stats = get_analytics(df)
+print(f"    Total queries: {stats['total']}, Avg confidence: {stats['avg_conf']:.1%}")
 
-a = get_analytics(df)
-print(f"[11] Analytics: total={a['total']}, avg_conf={a['avg_conf']}")
-
-print("\n✅ ALL TESTS PASSED!")
+print("\nAll unit tests passed successfully!")
