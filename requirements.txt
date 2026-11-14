@@ -1,0 +1,14 @@
+# Core framework
+streamlit>=1.32.0
+
+# ML libraries
+scikit-learn>=1.4.0
+pandas>=2.0.0
+numpy>=1.26.0
+
+# Environment variable loading (for .env file support)
+python-dotenv>=1.0.0
+
+# Google Gemini API (optional – only needed for LLM fallback)
+# Comment this out if you don't need the AI fallback feature
+google-generativeai>=0.7.0
