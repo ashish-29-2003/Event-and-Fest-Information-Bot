@@ -1,0 +1,143 @@
+{
+  "intents": [
+    {
+      "tag": "greeting",
+      "patterns": [
+        "hi", "hello", "hey", "good morning", "good evening",
+        "what's up", "howdy", "greetings", "hi there", "hey bot"
+      ],
+      "responses": [
+        "Hello! 👋 Welcome to TechFest 2025! I can help you with event info, schedules, venues, prizes, and more. What would you like to know?",
+        "Hi there! 🎉 I'm your TechFest 2025 assistant. Ask me about events, timings, venues, or prizes!",
+        "Hey! Welcome! Ask me anything about TechFest 2025 — events, schedules, coordinators, you name it! 😊"
+      ]
+    },
+    {
+      "tag": "fest_info",
+      "patterns": [
+        "tell me about the fest", "what is techfest", "about the festival",
+        "fest details", "what is this event", "describe the fest",
+        "what is techfest 2025", "college fest info", "festival information",
+        "what happens at techfest"
+      ],
+      "responses": [
+        "🎓 TechFest 2025 is our college's annual mega-fest held from 10–12 February 2025! It features Technical, Cultural, Quiz, Gaming, and Creative competitions. Over 500 students participate across 10+ events. Entry is free for all students!"
+      ]
+    },
+    {
+      "tag": "event_list",
+      "patterns": [
+        "what events are there", "list all events", "show me all events",
+        "what competitions are available", "all events", "show events",
+        "what can I participate in", "events list", "which events",
+        "tell me all competitions"
+      ],
+      "responses": [
+        "Here are all the events at TechFest 2025:\n\n💻 Technical: Code Sprint, Hackathon, Robo Wars\n🎭 Cultural: Cultural Dance, Battle of Bands, Street Play\n🧠 Quiz: Quiz Blitz\n📸 Creative: Photography Hunt\n🗣️ Literary: Debate Championship\n🎮 Gaming: Gaming Tourney\n\nAsk me about any specific event for details!"
+      ]
+    },
+    {
+      "tag": "event_date",
+      "patterns": [
+        "when is the event", "what date is", "event date", "when does it happen",
+        "which day is the", "date of the event", "when is hackathon",
+        "what day is code sprint", "schedule date", "event timing"
+      ],
+      "responses": [
+        "I can tell you the date for any event! Which event are you asking about? (e.g., 'When is the Hackathon?')"
+      ]
+    },
+    {
+      "tag": "event_venue",
+      "patterns": [
+        "where is the event", "venue for", "location of", "where is it held",
+        "which hall", "where can I find", "event location", "where is hackathon",
+        "venue of code sprint", "where will dance be", "which place"
+      ],
+      "responses": [
+        "I can tell you the venue for any event! Which event's location do you want? (e.g., 'Where is the Hackathon?')"
+      ]
+    },
+    {
+      "tag": "event_time",
+      "patterns": [
+        "what time is the event", "event time", "what time does it start",
+        "timing of", "time for hackathon", "when does code sprint start",
+        "starting time", "event schedule time", "at what time", "what hour"
+      ],
+      "responses": [
+        "I can tell you the time for any event! Which event's timing do you want? (e.g., 'What time is Robo Wars?')"
+      ]
+    },
+    {
+      "tag": "schedule",
+      "patterns": [
+        "show schedule", "full schedule", "day schedule", "today's schedule",
+        "day 1 schedule", "day 2 schedule", "day 3 schedule",
+        "what is happening today", "event timetable", "programme schedule"
+      ],
+      "responses": [
+        "📅 TechFest 2025 Schedule:\n\n🗓️ Day 1 – Feb 10:\n  10:00 AM – Code Sprint (CS Lab 101)\n  12:00 PM – Quiz Blitz (Seminar Hall)\n  02:00 PM – Robo Wars (Engineering Arena)\n\n🗓️ Day 2 – Feb 11:\n  09:00 AM – Hackathon (Innovation Hub)\n  10:00 AM – Photography Hunt (Campus-wide)\n  02:00 PM – Gaming Tourney (Computer Lab 3)\n  11:00 AM – Street Play (College Ground)\n\n🗓️ Day 3 – Feb 12:\n  09:00 AM – Debate Championship (Seminar Hall)\n  03:00 PM – Cultural Dance (Main Auditorium)\n  05:00 PM – Battle of Bands (Open Air Stage)"
+      ]
+    },
+    {
+      "tag": "prizes",
+      "patterns": [
+        "what are the prizes", "prize money", "how much prize", "winning amount",
+        "cash prizes", "what do winners get", "prize details", "reward for winning",
+        "first prize", "prize pool", "prize for hackathon"
+      ],
+      "responses": [
+        "I can tell you prize details for any event! Which event's prizes do you want to know? (e.g., 'What are the prizes for Hackathon?')"
+      ]
+    },
+    {
+      "tag": "rules",
+      "patterns": [
+        "what are the rules", "event rules", "rules and regulations",
+        "competition rules", "eligibility", "who can participate",
+        "how many members in a team", "team size", "rules for hackathon",
+        "participation rules"
+      ],
+      "responses": [
+        "📋 General TechFest 2025 Rules:\n\n1️⃣ All enrolled college students can participate\n2️⃣ Show your college ID at registration\n3️⃣ Team events: 2–4 members per team\n4️⃣ Solo events: 1 participant only\n5️⃣ Late entries not accepted after the start time\n6️⃣ Judges' decisions are final\n7️⃣ Plagiarism/cheating leads to disqualification\n8️⃣ Bring your own laptop for technical events\n\nAsk about a specific event's rules for more details!"
+      ]
+    },
+    {
+      "tag": "registration_info",
+      "patterns": [
+        "how to register", "registration process", "how to sign up",
+        "where to register", "registration form", "how do I join",
+        "enroll for event", "how to participate", "sign up for hackathon",
+        "registration fee"
+      ],
+      "responses": [
+        "📝 Registration Info:\n\nCurrently, registration is done **in person** at the TechFest Helpdesk (Main Building Foyer).\n\n🗓️ Registration Dates: Feb 1–9, 2025\n⏰ Timing: 10 AM – 4 PM (weekdays)\n💰 Registration Fee: FREE for all college students!\n📋 Carry your college ID card\n\n🔜 Online registration is coming in the next version of this system — stay tuned!"
+      ]
+    },
+    {
+      "tag": "contact",
+      "patterns": [
+        "contact details", "who to contact", "coordinator contact",
+        "phone number", "who is the coordinator", "event organizer",
+        "helpdesk number", "contact for hackathon", "who manages",
+        "point of contact"
+      ],
+      "responses": [
+        "I can tell you the coordinator and contact for any event! Which event? (e.g., 'Who coordinates Hackathon?')\n\n📞 General Helpdesk: 9800000000\n📧 Email: techfest2025@college.edu"
+      ]
+    },
+    {
+      "tag": "goodbye",
+      "patterns": [
+        "bye", "goodbye", "see you", "thanks bye", "that's all",
+        "exit", "quit", "done", "thank you bye", "cya"
+      ],
+      "responses": [
+        "Goodbye! 👋 Best of luck for your events at TechFest 2025! 🎉",
+        "See you at TechFest 2025! 🎓 Feel free to ask anytime!",
+        "Bye! Have a great time at the fest! 🏆"
+      ]
+    }
+  ]
+}
